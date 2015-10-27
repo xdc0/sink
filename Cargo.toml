@@ -1,0 +1,4 @@
+[package]
+name = "sink"
+version = "0.1.0"
+authors = ["Chuy Del Castillo <chuy@imchuy.com>"]
