@@ -1,4 +1,4 @@
-// sink main file
+// sink file system module
 // Copyright (C) 2015 Chuy Del Castillo <chuy@imchuy.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -13,11 +13,32 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-extern crate sink;
-
 use std::path::Path;
+use std::io;
+use std::fs::{self, metadata, read_dir, ReadDir};
 
-fn main() {
-    let dir = Path::new("/tmp");
-    sink::fs::visit_dirs(dir);
+pub struct File<'a> {
+    name: &'a str,
+    parent: &'a Directory<'a>
+}
+
+pub struct Directory<'a> {
+    name: &'a str,
+    files: &'a [File<'a>],
+    parent: &'a Directory<'a>
+}
+
+pub fn visit_dirs(dir: &Path) -> io::Result<()> {
+    if try!(fs::metadata(dir)).is_dir() {
+        print_contents(try!(fs::read_dir(dir)));
+    }
+    Ok(())
+}
+
+fn print_contents(dir: ReadDir) -> io::Result<()> {
+    for file in dir {
+        let entry = try!(file);
+        println!("{:?}", entry.path());
+    }
+    Ok(())
 }

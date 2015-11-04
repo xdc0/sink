@@ -1,4 +1,4 @@
-// sink main file
+// sink lib file
 // Copyright (C) 2015 Chuy Del Castillo <chuy@imchuy.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -13,11 +13,4 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-extern crate sink;
-
-use std::path::Path;
-
-fn main() {
-    let dir = Path::new("/tmp");
-    sink::fs::visit_dirs(dir);
-}
+pub mod fs;
