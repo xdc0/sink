@@ -15,30 +15,88 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 use std::path::Path;
 use std::io;
-use std::fs::{self, metadata, read_dir, ReadDir};
+use std::fs::{self, metadata, read_dir, ReadDir, DirEntry};
+use std::ptr::null;
+
+pub trait Entry<'a> {
+    fn get_name(self) -> &'a str;
+    fn is_dir(self) -> bool;
+}
 
 pub struct File<'a> {
     name: &'a str,
-    parent: &'a Directory<'a>
+    path: &'a Path,
+    parent: Option<Directory<'a>>
 }
 
 pub struct Directory<'a> {
     name: &'a str,
-    files: &'a [File<'a>],
-    parent: &'a Directory<'a>
+    path: &'a Path,
+    parent: Option<Box<Directory<'a>>>,
+    children: Option<Vec<Box<Entry<'a>>>>
 }
 
-pub fn visit_dirs(dir: &Path) -> io::Result<()> {
+impl<'a> Entry<'a> for File<'a> {
+    fn get_name(self) -> &'a str {
+        self.name;
+    }
+
+    fn is_dir(self) -> bool {
+        false;
+    }
+}
+
+impl<'a> Entry<'a> for Directory<'a> {
+    fn get_name(self) -> &'a str {
+        self.name;
+    }
+
+    fn is_dir(self) -> bool {
+        true;
+    }
+}
+
+pub fn set_root_dir(dir_path: &str) -> io::Result<Directory> {
+    let dir = Path::new(dir_path);
     if try!(fs::metadata(dir)).is_dir() {
-        print_contents(try!(fs::read_dir(dir)));
+        let root = Directory { name: dir_path, path: dir, parent: None, children: None };
+        return Ok(root);
     }
-    Ok(())
+    panic!("Not a directory");
 }
 
-fn print_contents(dir: ReadDir) -> io::Result<()> {
-    for file in dir {
+// This method screams for abstraction, but not sure how to do it right now..
+fn inspect_dir<'a>(dir: &'a mut Directory) -> io::Result<Directory<'a>> {
+    for file in try!(fs::read_dir(dir.path)) {
         let entry = try!(file);
-        println!("{:?}", entry.path());
+        if try!(entry.metadata()).is_dir() {
+            let child = Directory {
+                name: entry.file_name().to_str().unwrap(),
+                path: entry.path().as_path(),
+                parent: Some(Box::from_raw(dir)),
+                children: None
+            };
+            inspect_dir(&mut child);
+
+            if(dir.children.is_some()) {
+                dir.children.unwrap().push(Box::from_raw(&mut child));
+            } else {
+                dir.children = Some(vec![Box::from_raw(&mut child)]);
+            }
+        } else {
+            let child = File {
+                name: entry.file_name().to_str().unwrap(),
+                path: entry.path().as_path(),
+                parent: Some(*dir)
+            };
+
+            if(dir.children.is_some()) {
+                dir.children.unwrap().push(Box::from_raw(&mut child));
+            } else {
+                dir.children = Some(vec![Box::from_raw(&mut child)]);
+            }
+        }
+
     }
-    Ok(())
+    Ok(dir);
 }
